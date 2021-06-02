@@ -15,10 +15,6 @@ import torchvision.transforms as T
 from torch.utils.tensorboard import SummaryWriter
 
 
-env = gym.make('CartPole-v0').unwrapped
-# plt.ion()
-
-
 BATCH_SIZE = 128
 GAMMA = 0.999
 EPS_START = 0.9
@@ -30,13 +26,12 @@ LEARNING_RATE = 1e-4
 NUM_EPS = 10_000
 MEMORY_CAP = 20_000
 
-COMMENT = "DQN_with_BN"
-# COMMENT = "DQN_wo_BN"
-# COMMENT = "DQN_with_Adam"
+# COMMENT = "DQN_BatchNorm"
+# COMMENT = "DQN_RMSprop"
+COMMENT = "DQN" # Default
 
-# if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+env = gym.make('CartPole-v0').unwrapped
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
@@ -68,18 +63,22 @@ class DQN(nn.Module):
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
         self.bn3 = nn.BatchNorm2d(32)
 
-        self.fc = nn.Linear(512, 2)
+        self.fc1 = nn.Linear(512, 512)
+        self.fc2 = nn.Linear(512, 2)
 
     def forward(self, x):
         x = x.to(device)
 
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        # x = F.relu(self.conv1(x))
-        # x = F.relu(self.conv2(x))
-        # x = F.relu(self.conv3(x))
-        return self.fc(x.view(x.size(0), -1))
+        # x = F.relu(self.bn1(self.conv1(x)))
+        # x = F.relu(self.bn2(self.conv2(x)))
+        # x = F.relu(self.bn3(self.conv3(x)))
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+
+        x = F.relu(self.fc1(x.view(x.size(0), -1)))
+        return self.fc2(x)
 
 def disable_view_window():
     from gym.envs.classic_control import rendering
@@ -103,11 +102,9 @@ def get_cart_location(screen_width):
     scale = screen_width / world_width
     return int(env.state[0] * scale + screen_width / 2.0)  # MIDDLE OF CART
 
+
 def get_screen():
-    # Returned screen requested by gym is 400x600x3, but is sometimes larger
-    # such as 800x1200x3. Transpose it into torch order (CHW).
     screen = env.render(mode='rgb_array').transpose((2, 0, 1))
-    # Cart is in the lower half, so strip off the top and bottom of the screen
     _, screen_height, screen_width = screen.shape
     screen = screen[:, int(screen_height*0.4):int(screen_height * 0.8)]
     view_width = int(screen_width * 0.6)
@@ -119,26 +116,15 @@ def get_screen():
     else:
         slice_range = slice(cart_location - view_width // 2,
                             cart_location + view_width // 2)
-    # Strip off the edges, so that we have a square image centered on a cart
     screen = screen[:, :, slice_range]
-    # Convert to float, rescale, convert to torch tensor
-    # (this doesn't require a copy)
     screen = np.ascontiguousarray(screen, dtype=np.float32) / 255
     screen = torch.from_numpy(screen)
-    # Resize, and add a batch dimension (BCHW)
     return resize(screen).unsqueeze(0)
 
 env.reset()
-# plt.figure()
-# plt.imshow(get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(),
-#            interpolation='none')
-# plt.title('Example extracted screen')
-# plt.show()
-
 init_screen = get_screen()
 _, _, screen_height, screen_width = init_screen.shape
 
-# Get number of actions from gym action space
 n_actions = env.action_space.n
 
 policy_net = DQN().to(device)
@@ -146,7 +132,8 @@ target_net = DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-optimizer = optim.RMSprop(policy_net.parameters())
+# optimizer = optim.RMSprop(policy_net.parameters())
+optimizer = optim.Adam(policy_net.parameters())
 memory = ReplayMemory(MEMORY_CAP)
 
 steps_done = 0
@@ -173,8 +160,6 @@ def optimize_model():
     transitions = memory.sample(BATCH_SIZE)
     batch = Transition(*zip(*transitions))
 
-    # Compute a mask of non-final states and concatenate the batch elements
-    # (a final state would've been the one after which simulation ended)
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                           batch.next_state)), device=device, dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state
@@ -187,6 +172,7 @@ def optimize_model():
 
     next_state_values = torch.zeros(BATCH_SIZE, device=device)
     next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
+    
     # Compute the expected Q values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
