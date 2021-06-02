@@ -26,9 +26,7 @@ LEARNING_RATE = 1e-4
 NUM_EPS = 10_000
 MEMORY_CAP = 20_000
 
-# COMMENT = "DQN_BatchNorm"
-# COMMENT = "DQN_RMSprop"
-COMMENT = "DQN" # Default
+COMMENT = "Double_DQN"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make('CartPole-v0').unwrapped
@@ -52,10 +50,10 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-class DQN(nn.Module):
+class Double_DQN(nn.Module):
 
     def __init__(self):
-        super(DQN, self).__init__()
+        super(Double_DQN, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
@@ -68,10 +66,6 @@ class DQN(nn.Module):
 
     def forward(self, x):
         x = x.to(device)
-
-        # x = F.relu(self.bn1(self.conv1(x)))
-        # x = F.relu(self.bn2(self.conv2(x)))
-        # x = F.relu(self.bn3(self.conv3(x)))
 
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
@@ -127,12 +121,11 @@ _, _, screen_height, screen_width = init_screen.shape
 
 n_actions = env.action_space.n
 
-policy_net = DQN().to(device)
-target_net = DQN().to(device)
+policy_net = Double_DQN().to(device)
+target_net = Double_DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-# optimizer = optim.RMSprop(policy_net.parameters())
 optimizer = optim.Adam(policy_net.parameters())
 memory = ReplayMemory(MEMORY_CAP)
 
@@ -161,20 +154,23 @@ def optimize_model():
     batch = Transition(*zip(*transitions))
 
     non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                          batch.next_state)), device=device, dtype=torch.bool)
+                                        batch.map_image)), device=device, dtype=torch.bool)
     non_final_next_states = torch.cat([s for s in batch.next_state if s is not None])
 
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
     reward_batch = torch.cat(batch.reward)
 
+    # current predicted Q-value
     state_action_values = policy_net(state_batch).gather(1, action_batch)
 
-    next_state_values = torch.zeros(BATCH_SIZE, device=device)
-    next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach()
+    # Calculate next state Q-value
+    next_Q = torch.zeros(BATCH_SIZE, device=device)
+    next_state_Q = policy_net(non_final_next_states)
+    best_action = torch.argmax(next_state_Q, axis=1).unsqueeze(1)
+    next_Q[non_final_mask] = target_net(non_final_next_states).gather(1, best_action).squeeze(1).detach()
 
-    # Compute the expected Q values
-    expected_state_action_values = (next_state_values * GAMMA) + reward_batch
+    expected_state_action_values = (next_Q * GAMMA) + reward_batch
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
