@@ -122,7 +122,7 @@ target_net = Double_DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
-optimizer = optim.Adam(policy_net.parameters())
+optimizer = optim.Adam(policy_net.parameters(), lr=LEARNING_RATE)
 memory = ReplayMemory(MEMORY_CAP)
 
 steps_done = 0
@@ -134,7 +134,7 @@ def select_action(state):
     eps_threshold = EPS_END + (EPS_START - EPS_END) * \
         math.exp(-1. * steps_done / EPS_DECAY)
     if t == 0:
-        print(f"eps:{eps_threshold:.5f}, memory:{len(memory)}")
+        print(f"eps: {eps_threshold:.5f}, memory: {len(memory)}")
     steps_done += 1
     if sample > eps_threshold:
         with torch.no_grad():
