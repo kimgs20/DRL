@@ -14,7 +14,6 @@ import torchvision.transforms as T
 
 from torch.utils.tensorboard import SummaryWriter
 
-
 BATCH_SIZE = 128
 GAMMA = 0.999
 EPS_START = 0.9
@@ -57,11 +56,11 @@ class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
+        # self.bn1 = nn.BatchNorm2d(16)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
+        # self.bn2 = nn.BatchNorm2d(32)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(32)
+        # self.bn3 = nn.BatchNorm2d(32)
 
         self.fc1 = nn.Linear(512, 512)
         self.fc2 = nn.Linear(512, 2)
@@ -192,7 +191,7 @@ writer = SummaryWriter(comment=f" {COMMENT}")
 
 for i_episode in range(NUM_EPS):
     # Initialize the environment and state
-    print(f"Episde: {i_episode}")
+    print(f"Episode: {i_episode}")
     env.reset()
     last_screen = get_screen()
     current_screen = get_screen()
