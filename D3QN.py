@@ -25,7 +25,7 @@ LEARNING_RATE = 1e-4
 NUM_EPS = 10_000
 MEMORY_CAP = 20_000
 
-COMMENT = "Double_DQN"
+COMMENT = "Dueling_DQN"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make('CartPole-v0').unwrapped
@@ -49,16 +49,22 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
-class Double_DQN(nn.Module):
-
+class Dueling_DQN(nn.Module):
     def __init__(self):
-        super(Double_DQN, self).__init__()
+        super(Dueling_DQN, self).__init__()
+
+        # convolution networks
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
 
-        self.fc1 = nn.Linear(512, 512)
-        self.fc2 = nn.Linear(512, 2)
+        # Advantage Value & State Value
+        self.fc1_adv = nn.Linear(512, 512)
+        self.fc1_val = nn.Linear(512, 512)
+
+        # Advantage Value & State Value
+        self.fc2_adv = nn.Linear(512, 2)  # for advantage (Q-V)
+        self.fc2_val = nn.Linear(512, 1)  # for state-value
 
     def forward(self, x):
         x = x.to(device)
@@ -66,9 +72,18 @@ class Double_DQN(nn.Module):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
 
-        x = F.relu(self.fc1(x.view(x.size(0), -1)))
-        return self.fc2(x)
+        adv = F.relu(self.fc1_adv(x))
+        val = F.relu(self.fc1_val(x))
+
+        adv = self.fc2_adv(adv)
+        val = self.fc2_val(val).expand(x.size(0), 2)
+
+        # Q-value from dueling DQN
+        x = val + adv - adv.mean(1).unsqueeze(1).expand(x.size(0), 2)
+        return x
+
 
 def disable_view_window():
     from gym.envs.classic_control import rendering
@@ -117,8 +132,8 @@ _, _, screen_height, screen_width = init_screen.shape
 
 n_actions = env.action_space.n
 
-policy_net = Double_DQN().to(device)
-target_net = Double_DQN().to(device)
+policy_net = Dueling_DQN().to(device)
+target_net = Dueling_DQN().to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 
