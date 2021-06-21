@@ -27,7 +27,8 @@ MEMORY_CAP = 20_000
 
 # COMMENT = "DQN_BatchNorm"
 # COMMENT = "DQN_RMSprop"
-COMMENT = "DQN" # Default
+# COMMENT = "DQN" # Default
+COMMENT = "DQN_one_layer" # Default
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make('CartPole-v0').unwrapped

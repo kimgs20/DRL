@@ -25,7 +25,7 @@ LEARNING_RATE = 1e-4
 NUM_EPS = 10_000
 MEMORY_CAP = 20_000
 
-COMMENT = "Dueling_DQN"
+COMMENT = "D3QN"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make('CartPole-v0').unwrapped
