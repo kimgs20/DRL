@@ -1,3 +1,10 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torchvision.transforms as T
+from torch.utils.tensorboard import SummaryWriter
+
 import gym
 import math
 import random
@@ -5,14 +12,6 @@ import numpy as np
 from collections import namedtuple, deque
 from itertools import count
 from PIL import Image
-
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import torchvision.transforms as T
-
-from torch.utils.tensorboard import SummaryWriter
 
 BATCH_SIZE = 128
 GAMMA = 0.999
@@ -106,7 +105,7 @@ def get_cart_location(screen_width):
 def get_screen():
     screen = env.render(mode='rgb_array').transpose((2, 0, 1))
     _, screen_height, screen_width = screen.shape
-    screen = screen[:, int(screen_height*0.4):int(screen_height * 0.8)]
+    screen = screen[:, int(screen_height * 0.4):int(screen_height * 0.8)]
     view_width = int(screen_width * 0.6)
     cart_location = get_cart_location(screen_width)
     if cart_location < view_width // 2:
