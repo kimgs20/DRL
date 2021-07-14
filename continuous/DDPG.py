@@ -14,4 +14,4 @@ from itertools import count
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make("LunarLanderContinuous-v2")
 
-COMMENT = "REINFORCE_lunarlander"
+COMMENT = "DDPG_lunarlander"
