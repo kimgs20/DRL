@@ -26,8 +26,8 @@ MEMORY_CAP = 20_000
 
 # COMMENT = "DQN_BatchNorm"
 # COMMENT = "DQN_RMSprop"
-# COMMENT = "DQN" # Default
-COMMENT = "DQN_one_layer" # Default
+# COMMENT = "DQN_Adam_MSELoss"
+COMMENT = "DQN" # Default (Adam, HuberLoss)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 env = gym.make('CartPole-v0').unwrapped
@@ -177,6 +177,7 @@ def optimize_model():
 
     # Compute Huber loss
     criterion = nn.SmoothL1Loss()
+    # criterion = nn.MSELoss()
     loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
 
     # Optimize the model
