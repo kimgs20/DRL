@@ -2,3 +2,4 @@
 */runs
 */oldruns
 /etc
+*/__pycache__
