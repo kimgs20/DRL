@@ -8,3 +8,4 @@ DQN, Double DQN, Dueling DQN (Need modulize)
    
 21-07-21   
 DDPG   
+![DDPG_gif](./continuous/DDPG_pendulum/episode_1974_return_-233.gif)
