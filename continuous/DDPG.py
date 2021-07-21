@@ -87,14 +87,14 @@ def update_networks(memory, actor, actor_target, critic, critic_target, critic_o
 
     state_batch = torch.cat(batch.state)
     action_batch = torch.cat(batch.action)
-    reward_batch = torch.cat(batch.reward).unsqueeze(1)
+    reward_batch = torch.cat(batch.reward)
     next_state_batch = torch.cat(batch.next_state)
 
     # target networks needs only forward propagation. don't need gradient
     with torch.no_grad():
         target_q = reward_batch + GAMMA * critic_target(next_state_batch, actor_target(next_state_batch))
 
-    critic_q = critic(state_batch, action_batch.unsqueeze(1))
+    critic_q = critic(state_batch, action_batch)
     critic_loss = F.mse_loss(critic_q, target_q)
 
     critic_optimizer.zero_grad()
@@ -160,10 +160,10 @@ def main():
             next_state, reward, done, _ = env.step([action])
 
             # change data types and add batch dimension
-            action = torch.tensor([action], dtype=torch.float32)
+            action = torch.tensor([action], dtype=torch.float32).unsqueeze(0)
             next_state = torch.from_numpy(next_state).float()
             next_state = next_state.unsqueeze(0)
-            reward = torch.tensor([reward], dtype=torch.float32)
+            reward = torch.tensor([reward], dtype=torch.float32).unsqueeze(0)
 
             # in my opinion, push 'done' into replay buffer is awkward... (and also memory inefficient)
             memory.push(state, action, next_state, reward)
@@ -180,8 +180,8 @@ def main():
             if done is True:
                 print(f"Return: {reward_sum:2f}")
                 writer.add_scalar("Return", reward_sum, i_episode)
-                writer.add_scalar("actor loss per ep", actor_loss_sum / (t - 1), i_episode)
-                writer.add_scalar("critic loss per ep", critic_loss_sum / (t - 1), i_episode)
+                writer.add_scalar("actor loss per ep", actor_loss_sum / (t + 1), i_episode)
+                writer.add_scalar("critic loss per ep", critic_loss_sum / (t + 1), i_episode)
                 print()
                 break
 
