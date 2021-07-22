@@ -43,7 +43,6 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = torch.tanh(self.fc_mu(x)) * 2.0  # Don't use relu on last layer!
-        x = x.clip(min=-2.0, max=2.0)
         return x
 
 
@@ -79,7 +78,7 @@ class OrnsteinUhlenbeckNoise:
         return x
 
 
-def update_networks(memory, actor, actor_target, critic, critic_target, critic_optimizer, actor_optimizer):
+def update_networks(memory, actor, actor_target, actor_optimizer, critic, critic_target, critic_optimizer):
     if len(memory) < BATCH_SIZE:
         return
 
@@ -133,8 +132,8 @@ def main():
     critic, critic_target = Critic(NUM_STATES, NUM_ACTIONS), Critic(NUM_STATES, NUM_ACTIONS)
     critic_target.load_state_dict(critic.state_dict())
 
-    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_CRITIC)
     actor_optimizer = optim.Adam(actor.parameters(), lr=LR_ACTOR)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_CRITIC)
 
     ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(1))
     memory = ReplayMemory(MAX_MEMORY)
@@ -174,8 +173,8 @@ def main():
             reward_sum += reward.item()
 
             if len(memory) > 2000:
-                actor_loss, critic_loss = update_networks(memory, actor, actor_target,
-                    critic, critic_target, critic_optimizer, actor_optimizer)
+                actor_loss, critic_loss = update_networks(memory, actor, actor_target, actor_optimizer,
+                                                                  critic, critic_target, critic_optimizer)
                 actor_loss_sum += actor_loss
                 critic_loss_sum += critic_loss
 
