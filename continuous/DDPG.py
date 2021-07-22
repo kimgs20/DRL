@@ -14,6 +14,7 @@ from collections import namedtuple, deque
 import matplotlib.pyplot as plt
 import matplotlib.animation as Animation
 
+from disable_view_window import disable_view_window
 
 class ReplayMemory():
 
@@ -121,6 +122,7 @@ def main():
     NUM_ACTIONS = env.action_space.shape[0]
 
     os.makedirs(f"./{COMMENT}", exist_ok=True)
+    disable_view_window()
 
     fig, ax = plt.subplots()
     ax.tick_params(bottom=False, labelbottom=False, left=False, labelleft=False)
@@ -131,8 +133,8 @@ def main():
     critic, critic_target = Critic(NUM_STATES, NUM_ACTIONS), Critic(NUM_STATES, NUM_ACTIONS)
     critic_target.load_state_dict(critic.state_dict())
 
-    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_Q)
-    actor_optimizer = optim.Adam(actor.parameters(), lr=LR_MU)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_CRITIC)
+    actor_optimizer = optim.Adam(actor.parameters(), lr=LR_ACTOR)
 
     ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(1))
     memory = ReplayMemory(MAX_MEMORY)
@@ -194,17 +196,15 @@ def main():
 
 if __name__ == '__main__':
     # Hyperparameters
-    LR_MU       = 0.0005
-    LR_Q        = 0.001
+    LR_ACTOR    = 0.0005
+    LR_CRITIC   = 0.001
     GAMMA       = 0.99
     TAU         = 0.005  # for target network soft update
     BATCH_SIZE  = 32
+    MAX_MEMORY  = 50_000
 
-    MAX_MEMORY    = 50_000
-    NUM_EPS    = 2_000
-
-    GIF_THRESH = NUM_EPS - 30
-
+    NUM_EPS     = 2_000
+    GIF_THRESH  = NUM_EPS - 30
     COMMENT     = "DDPG_pendulum"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -212,3 +212,10 @@ if __name__ == '__main__':
                             ('state', 'action', 'next_state', 'reward'))
 
     main()
+
+'''
+codes are copy from
+https://github.com/seungeunrho/minimalRL
+https://github.com/jdlowman2/rl4robotics
+Thanks you!
+'''
