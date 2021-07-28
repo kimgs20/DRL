@@ -79,22 +79,21 @@ class OrnsteinUhlenbeckNoise:
         return x
 
 
-def update_networks(memory, actor, actor_target, actor_optimizer, critic, critic_target, critic_optimizer):
+def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, critic, critic_target, critic_optimizer):
     if len(memory) < BATCH_SIZE:
         return
 
     transitions = memory.sample(BATCH_SIZE)
     batch = Transition(*zip(*transitions))
 
-    state_batch = torch.cat(batch.state)        # [32, 8]
-    action_batch = torch.cat(batch.action)      # [32, 2]
-    reward_batch = torch.cat(batch.reward)      # [32, 1]
+    state_batch = torch.cat(batch.state)            # [32, 8]
+    action_batch = torch.cat(batch.action)          # [32, 2]
+    reward_batch = torch.cat(batch.reward)          # [32, 1]
     next_state_batch = torch.cat(batch.next_state)  # [32, 8]
 
     # target networks needs only forward propagation. don't need gradient
     with torch.no_grad():
         target_q = reward_batch + GAMMA * critic_target(next_state_batch, actor_target(next_state_batch))
-        # use DDQN way target value computing...
 
     critic_q = critic(state_batch, action_batch)
     critic_loss = F.smooth_l1_loss(critic_q, target_q)
@@ -109,10 +108,12 @@ def update_networks(memory, actor, actor_target, actor_optimizer, critic, critic
     actor_optimizer.step()
 
     # for softupdate
-    for param, target_param in zip(critic.parameters(), critic_target.parameters()):
-        target_param.data.copy_(TAU * param.data + (1 - TAU) * target_param.data)
-    for param, target_param in zip(actor.parameters(), actor_target.parameters()):
-        target_param.data.copy_(TAU * param.data + (1 - TAU) * target_param.data)
+    if i_episode%10 == 0:
+        for i in range(10):
+            for param, target_param in zip(critic.parameters(), critic_target.parameters()):
+                target_param.data.copy_(TAU * param.data + (1 - TAU) * target_param.data)
+            for param, target_param in zip(actor.parameters(), actor_target.parameters()):
+                target_param.data.copy_(TAU * param.data + (1 - TAU) * target_param.data)
     return actor_loss.item(), critic_loss.item()
 
 
@@ -137,7 +138,6 @@ def main():
     actor_optimizer = optim.Adam(actor.parameters(), lr=LR_ACTOR)
     critic_optimizer = optim.Adam(critic.parameters(), lr=LR_CRITIC)
 
-    # ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(1))
     ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(2,))
     memory = ReplayMemory(MAX_MEMORY)
 
@@ -178,7 +178,7 @@ def main():
             reward_sum += reward.item()
 
             if len(memory) > 2000:
-                actor_loss, critic_loss = update_networks(memory, actor, actor_target, actor_optimizer,
+                actor_loss, critic_loss = update_networks(i_episode, memory, actor, actor_target, actor_optimizer,
                                                                   critic, critic_target, critic_optimizer)
                 actor_loss_sum += actor_loss
                 critic_loss_sum += critic_loss
