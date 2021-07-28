@@ -9,6 +9,6 @@ DQN, Double DQN, Dueling DQN (Need modulize)
 21-07-21   
 DDPG   
 ![DDPG_gif](./continuous/DDPG_pendulum/episode_1974_return_-233.gif)
-![DDPG_gif](./continuous/DDPG_lunarlander/episode_9988_return_271.gif)
+![DDPG_gif](./continuous/DDPG_lunarlander/episode_9988_return_271.gif)   
 agent observation   
 ![DDPG_gif](./continuous/DDPG_pendulum_control_from_pixel/agent_observation.gif)
