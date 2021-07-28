@@ -46,7 +46,7 @@ class Actor(nn.Module):
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
         convh = convw
         linear_input_size = convw * convh * 32
-        print(linear_input_size)
+
         self.fc1 = nn.Linear(linear_input_size ,128)
         self.fc2 = nn.Linear(128, 64)
         self.fc_mu = nn.Linear(64, num_actions)
@@ -77,7 +77,6 @@ class Critic(nn.Module):
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
         convh = convw
         linear_input_size = convw * convh * 32
-        print(linear_input_size)
 
         self.fc_state = nn.Linear(linear_input_size, 64)
         self.fc_action = nn.Linear(num_actions, 64)
@@ -144,7 +143,7 @@ def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, cri
 
     critic_q = critic(state_batch, action_batch)
 
-    critic_loss = F.mse_loss(critic_q, target_q.unsqueeze(1)) # need unsqueeze
+    critic_loss = F.mse_loss(critic_q, target_q.unsqueeze(1))
 
     critic_optimizer.zero_grad()
     critic_loss.backward()
@@ -174,7 +173,6 @@ def resize(img):
 
 def get_pixel(env):
     img = env.render(mode='rgb_array').transpose((2, 0, 1))  # (500, 500, 3) -> (3, 500, 500)
-    # _, img_height, img_width = img.shape
     img = img[:, slice(120, 380), slice(120, 380)]
     img = np.ascontiguousarray(img, dtype=np.float32) / 255
     img = torch.from_numpy(img)
@@ -184,7 +182,6 @@ def get_pixel(env):
 def main():
 
     env = gym.make('Pendulum-v0')
-    # NUM_STATES = env.observation_space.shape[0]
     IMG_HEIGHT, IMG_WIDTH = int(50), int(50)
     NUM_ACTIONS = env.action_space.shape[0]
 
