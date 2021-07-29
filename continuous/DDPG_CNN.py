@@ -18,6 +18,7 @@ import matplotlib.animation as Animation
 
 from disable_view_window import disable_view_window
 
+
 class ReplayMemory():
 
     def __init__(self, capacity):
@@ -41,13 +42,11 @@ class Actor(nn.Module):
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
 
-        def conv2d_outsize(input_len, kernel_size = 5, stride = 2):
-            return ((input_len - kernel_size) // stride) + 1
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
         convh = convw
         linear_input_size = convw * convh * 32
 
-        self.fc1 = nn.Linear(linear_input_size ,128)
+        self.fc1 = nn.Linear(linear_input_size, 128)
         self.fc2 = nn.Linear(128, 64)
         self.fc_mu = nn.Linear(64, num_actions)
 
@@ -72,8 +71,6 @@ class Critic(nn.Module):
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
 
-        def conv2d_outsize(input_len, kernel_size = 5, stride = 2):
-            return ((input_len - kernel_size) // stride) + 1
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
         convh = convw
         linear_input_size = convw * convh * 32
@@ -88,7 +85,7 @@ class Critic(nn.Module):
     def forward(self, x, a):
         x = x.to(device)
         a = a.to(device)
-    
+
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -102,6 +99,10 @@ class Critic(nn.Module):
         h_q = F.relu(self.fc1(h_concat))
         q_value = self.fc2(h_q)
         return q_value
+
+
+def conv2d_outsize(input_len, kernel_size=5, stride=2):
+    return ((input_len - kernel_size) // stride) + 1
 
 
 # action exploration noise process
@@ -149,13 +150,13 @@ def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, cri
     critic_loss.backward()
     critic_optimizer.step()
 
-    actor_loss = -critic(state_batch, actor(state_batch)).mean() # gradient ascent for highest Q value
+    actor_loss = -critic(state_batch, actor(state_batch)).mean()  # gradient ascent for highest Q value
     actor_optimizer.zero_grad()
     actor_loss.backward()
     actor_optimizer.step()
 
     # for softupdate
-    if i_episode%10 == 0:
+    if i_episode % 10 == 0:
         for i in range(10):
             for param, target_param in zip(critic.parameters(), critic_target.parameters()):
                 target_param.data.copy_(TAU * param.data + (1 - TAU) * target_param.data)
@@ -166,8 +167,8 @@ def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, cri
 
 def resize(img):
     resize = T.Compose([T.ToPILImage(),
-                    T.Resize(50, interpolation=Image.CUBIC),
-                    T.ToTensor()])
+                        T.Resize(50, interpolation=Image.CUBIC),
+                        T.ToTensor()])
     return resize(img)
 
 
@@ -220,7 +221,7 @@ def main():
         state = current_img - last_img
 
         for t in count():
-            # if you see what agent actually see, uncomment next two lines
+            # if you want to see what agent actually take, uncomment next two lines
             # plt.imshow(state.cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation='none')
             # plt.show()
 
@@ -239,7 +240,7 @@ def main():
             if not done:
                 next_state = current_img - last_img
             else:
-                next_state = None  # if t = 199 next_state is None
+                next_state = None
 
             action = torch.tensor([action], device=device, dtype=torch.float32).unsqueeze(0)
             reward = torch.tensor([reward], device=device, dtype=torch.float32)
@@ -250,7 +251,7 @@ def main():
             state = next_state
             reward_sum += reward.item()
 
-            if len(memory) >= 32:
+            if len(memory) >= 2_000:
                 actor_loss, critic_loss = update_networks(i_episode, memory,
                                                           actor, actor_target, actor_optimizer,
                                                           critic, critic_target, critic_optimizer)
@@ -258,11 +259,11 @@ def main():
                 critic_loss_sum += critic_loss
 
             if done is True:
-                print(f"Return: {reward_sum:2f}")
+                print(f"memory length: {len(memory)}")
+                print(f"Return: {reward_sum:2f}\n")
                 writer.add_scalar("Return", reward_sum, i_episode)
                 writer.add_scalar("actor loss per ep", actor_loss_sum / (t + 1), i_episode)
                 writer.add_scalar("critic loss per ep", critic_loss_sum / (t + 1), i_episode)
-                print()
                 break
 
         if i_episode > GIF_THRESH:
@@ -274,18 +275,17 @@ def main():
 
 if __name__ == '__main__':
     # Hyperparameters
-    LR_MU       = 0.0005
-    LR_Q        = 0.001
-    GAMMA       = 0.99
-    TAU         = 0.005  # for target network soft update
-    BATCH_SIZE  = 32
+    LR_MU = 5e-5
+    LR_Q = 1e-4
+    GAMMA = 0.99
+    TAU = 0.005  # for target network soft update
+    BATCH_SIZE = 32
 
-    MAX_MEMORY    = 50_000
-    NUM_EPS    = 10_000
-
+    MAX_MEMORY = 30_000
+    NUM_EPS = 10_000
     GIF_THRESH = NUM_EPS - 30
 
-    COMMENT     = "DDPG_pendulum_control_from_pixel"
+    COMMENT = "DDPG_pendulum_control_from_pixel"
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     Transition = namedtuple('Transition',
