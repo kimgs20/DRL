@@ -144,7 +144,7 @@ def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, cri
 
     critic_q = critic(state_batch, action_batch)
 
-    critic_loss = F.mse_loss(critic_q, target_q.unsqueeze(1))
+    critic_loss = F.smooth_l1_loss(critic_q, target_q.unsqueeze(1))
 
     critic_optimizer.zero_grad()
     critic_loss.backward()
@@ -232,8 +232,11 @@ def main():
             action = actor(state)
             if i_episode < 1000:
                 action = action.item() + ou_noise()[0]
+            else:
+                action = action.item()
             _, reward, done, _ = env.step([action])
 
+            reward = reward / 100.0
             last_img = current_img
             current_img = get_pixel(env)
 
