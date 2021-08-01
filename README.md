@@ -15,3 +15,4 @@ DDPG
 DDPG with CNN(continuous control from pixel)   
 agent observation   
 ![DDPG_gif](./continuous/DDPG_pendulum_control_from_pixel/agent_observation.gif)
+![DDPG_gif](./continuous/DDPG_pendulum_control_from_pixel/episode_9974_return_-4.gif)
