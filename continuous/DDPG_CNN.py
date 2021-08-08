@@ -19,13 +19,11 @@ import matplotlib.animation as Animation
 from disable_view_window import disable_view_window
 
 
-class ReplayMemory():
-
+class ReplayMemory:
     def __init__(self, capacity):
         self.memory = deque(maxlen=capacity)
 
     def push(self, *args):
-        """Save a transition"""
         self.memory.append(Transition(*args))
 
     def sample(self, batch_size):
@@ -42,16 +40,17 @@ class Actor(nn.Module):
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
 
+        convh = conv2d_outsize(conv2d_outsize(conv2d_outsize(h)))
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
-        convh = convw
-        linear_input_size = convw * convh * 32
+        linear_input_size = convh * convw * 32
 
         self.fc1 = nn.Linear(linear_input_size, 128)
         self.fc2 = nn.Linear(128, 64)
         self.fc_mu = nn.Linear(64, num_actions)
 
     def forward(self, x):
-        x = x.to(device)
+        # if store transition in VRAM, comment next to line
+        # x = x.to(device)
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
@@ -71,9 +70,9 @@ class Critic(nn.Module):
         self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
 
+        convh = conv2d_outsize(conv2d_outsize(conv2d_outsize(h)))
         convw = conv2d_outsize(conv2d_outsize(conv2d_outsize(w)))
-        convh = convw
-        linear_input_size = convw * convh * 32
+        linear_input_size = convh * convw * 32
 
         self.fc_state = nn.Linear(linear_input_size, 64)
         self.fc_action = nn.Linear(num_actions, 64)
@@ -83,7 +82,7 @@ class Critic(nn.Module):
 
     # x: state, a: action
     def forward(self, x, a):
-        # if store transition in VRAM, comment next to lines
+        # if store transition in VRAM, comment next two lines
         # x = x.to(device)
         # a = a.to(device)
 
@@ -141,8 +140,8 @@ def update_networks(i_episode, memory, actor, actor_target, actor_optimizer, cri
     # target networks needs only forward propagation. don't need gradient
     with torch.no_grad():
         next_state_values[non_final_mask] = critic_target(non_final_next_states, actor_target(non_final_next_states)).squeeze(1)
-        target_q = reward_batch + GAMMA * next_state_values
 
+    target_q = reward_batch + GAMMA * next_state_values
     critic_q = critic(state_batch, action_batch)
 
     critic_loss = F.smooth_l1_loss(critic_q, target_q.unsqueeze(1))
@@ -258,8 +257,7 @@ def main():
 
             state = next_state
 
-            # if len(memory) >= 2_000:
-            if t > BATCH_SIZE:
+            if len(memory) >= 2_000:
                 actor_loss, critic_loss = update_networks(i_episode, memory,
                                                           actor, actor_target, actor_optimizer,
                                                           critic, critic_target, critic_optimizer)
