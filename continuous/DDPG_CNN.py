@@ -83,8 +83,9 @@ class Critic(nn.Module):
 
     # x: state, a: action
     def forward(self, x, a):
-        x = x.to(device)
-        a = a.to(device)
+        # if store transition in VRAM, comment next to lines
+        # x = x.to(device)
+        # a = a.to(device)
 
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
@@ -177,7 +178,7 @@ def get_pixel(env):
     img = img[:, slice(120, 380), slice(120, 380)]
     img = np.ascontiguousarray(img, dtype=np.float32) / 255
     img = torch.from_numpy(img)
-    return resize(img).unsqueeze(0)
+    return resize(img).unsqueeze(0).to(device)  # [1, 3, 50, 50]
 
 
 def main():
@@ -195,11 +196,13 @@ def main():
     # Initialize Networks
     actor, actor_target = Actor(IMG_HEIGHT, IMG_WIDTH, NUM_ACTIONS).to(device), Actor(IMG_HEIGHT, IMG_WIDTH, NUM_ACTIONS).to(device)
     actor_target.load_state_dict(actor.state_dict())
+    actor_target.eval()
     critic, critic_target = Critic(IMG_HEIGHT, IMG_WIDTH, NUM_ACTIONS).to(device), Critic(IMG_HEIGHT, IMG_WIDTH, NUM_ACTIONS).to(device)
     critic_target.load_state_dict(critic.state_dict())
+    critic_target.eval()
 
-    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_Q)
     actor_optimizer = optim.Adam(actor.parameters(), lr=LR_MU)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=LR_Q)
 
     ou_noise = OrnsteinUhlenbeckNoise(mu=np.zeros(1))
     memory = ReplayMemory(MAX_MEMORY)
@@ -236,7 +239,9 @@ def main():
                 action = action.item()
             _, reward, done, _ = env.step([action])
 
-            reward = reward / 100.0
+            reward = reward / 10.0
+            reward_sum += reward
+
             last_img = current_img
             current_img = get_pixel(env)
 
@@ -252,9 +257,9 @@ def main():
             memory.push(state, action, next_state, reward)
 
             state = next_state
-            reward_sum += reward.item()
 
-            if len(memory) >= 2_000:
+            # if len(memory) >= 2_000:
+            if t > BATCH_SIZE:
                 actor_loss, critic_loss = update_networks(i_episode, memory,
                                                           actor, actor_target, actor_optimizer,
                                                           critic, critic_target, critic_optimizer)
@@ -285,7 +290,7 @@ if __name__ == '__main__':
     BATCH_SIZE = 32
 
     MAX_MEMORY = 30_000
-    NUM_EPS = 10_000
+    NUM_EPS = 3_000
     GIF_THRESH = NUM_EPS - 30
 
     COMMENT = "DDPG_pendulum_control_from_pixel"
